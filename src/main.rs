@@ -51,14 +51,3 @@ fn chdir(args: Option<Vec<&str>>) {
         None => eprintln!("Usage: cd <dir>"),
     }
 }
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn path_from_string() {
-        let mut args = Vec::new();
-        args.push("/");
-        let path = std::path::Path::new(args[0]);
-        assert_eq!(path.to_str(), Some("/"));
-    }
-}
