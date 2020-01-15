@@ -10,13 +10,16 @@ use std::process::{ Command, exit };
 fn main() {
     let mut stdout = io::stdout();
     let mut status = String::new();
-    status.push_str("");
     let mut prompt = String::new();
     prompt.push_str("💩"); 
     loop {
-        println!("{}", status);
-        write!(stdout, "{}", prompt).unwrap();
-        write!(stdout, " ").unwrap();
+        if let Ok(pwd) = env::var("PWD") {
+            status.push_str(&pwd);
+        } else {
+            status.push_str("");
+        }
+        println!("{}", status.yellow().on_magenta());
+        write!(stdout, "{} ", prompt).unwrap();
         stdout.flush().unwrap();
         let mut line = String::new();
         io::stdin().read_line(&mut line).expect("read error");
@@ -32,8 +35,30 @@ fn main() {
             "exit"      => exit(0),
             "cd"        => chdir(args),
             "getenv"    => getenv(args),
+            "setenv"    => setenv(args),
             bin         => launch(bin, args),
         }
+        status = String::new();
+    }
+}
+
+fn setenv(args: Option<Vec<&str>>) {
+    match args {
+        Some(command) => {
+            match command.len() {
+                1 => {
+                    let command: Vec<&str> = command[0].split('=').collect();
+                    if command.len() == 2 {
+                        env::set_var(command[0], command[1]);
+                    } else {
+                        eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red());
+                    }
+                },
+                2 => env::set_var(command[0], command[1]),
+                _ => eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red()),
+            }
+        },
+        None => eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red()), 
     }
 }
 
@@ -43,11 +68,11 @@ fn getenv(args: Option<Vec<&str>>) {
             for key in keys {
                 match env::var(key) {
                     Ok(val) => println!("{}: {:?}", key, val),
-                    Err(err) => eprintln!("could not interpret {}: {}", key, err),
+                    Err(err) => eprintln!("{}", format!("could not interpret {}: {}", key, err).red()),
                 }
             }
         },
-        None => eprintln!("Usage: getenv <env_key(s)>"),
+        None => eprintln!("{}", "Usage: getenv <env_key(s)>".red()),
     }
 }
 
@@ -56,16 +81,16 @@ fn chdir(args: Option<Vec<&str>>) {
         Some(path) => {
             let path = Path::new(path[0]);
             if let Err(err) = env::set_current_dir(path) {
-                eprintln!("{}", err);
-                eprintln!("Usage: cd <dir>");
+                eprintln!("{}", format!("{}", err).red());
+                eprintln!("{}", "Usage: cd <dir>".red());
             }
         },
         None => {
             match dirs::home_dir() {
                 Some(home) => if let Err(err) = env::set_current_dir(home.as_path()) {
-                    eprintln!("{}", err);
+                    eprintln!("{}", format!("{}", err).red());
                 },
-                None => eprintln!("Usage: cd <dir>"),
+                None => eprintln!("{}", "Usage: cd <dir>".red()),
             }
         }
     }
@@ -81,7 +106,6 @@ fn launch(command: &str, args: Option<Vec<&str>>) {
             write!(io::stdout(), "{}", String::from_utf8(command.stderr).unwrap()).unwrap();
             write!(io::stderr(), "{}", String::from_utf8(command.stdout).unwrap()).unwrap();
         },
-        Err(err) => eprintln!("{}", err),
+        Err(err) => eprintln!("{}", format!("{}", err).red()),
     }
 }
-
