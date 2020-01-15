@@ -1,14 +1,18 @@
 extern crate dirs;
+extern crate colored;
 
 use std::env;
 use std::path::Path;
+use colored::*;
 use std::io::{self, Write};
 use std::process::{ Command, exit };
 
 fn main() {
     let mut stdout = io::stdout();
+    let prompt = "💩";
     loop {
-        write!(stdout, "$ ").unwrap();
+        write!(stdout, "{}", prompt).unwrap();
+        write!(stdout, " ").unwrap();
         stdout.flush().unwrap();
         let mut line = String::new();
         io::stdin().read_line(&mut line).expect("read error");
