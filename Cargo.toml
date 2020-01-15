@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 colored = "1.9"
 clap = "2.33"
+dirs = "2.0.2"

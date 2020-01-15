@@ -1,3 +1,5 @@
+extern crate dirs;
+
 use std::env;
 use std::path::Path;
 use std::io::{self, Write};
@@ -46,8 +48,16 @@ fn chdir(args: Option<Vec<&str>>) {
             let path = Path::new(path[0]);
             if let Err(err) = env::set_current_dir(path) {
                 eprintln!("{}", err);
+                eprintln!("Usage: cd <dir>");
             }
         },
-        None => eprintln!("Usage: cd <dir>"),
+        None => {
+            match dirs::home_dir() {
+                Some(home) => if let Err(err) = env::set_current_dir(home.as_path()) {
+                    eprintln!("{}", err);
+                },
+                None => eprintln!("Usage: cd <dir>"),
+            }
+        }
     }
 }
