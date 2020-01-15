@@ -9,8 +9,12 @@ use std::process::{ Command, exit };
 
 fn main() {
     let mut stdout = io::stdout();
-    let prompt = "💩";
+    let mut status = String::new();
+    status.push_str("");
+    let mut prompt = String::new();
+    prompt.push_str("💩"); 
     loop {
+        println!("{}", status);
         write!(stdout, "{}", prompt).unwrap();
         write!(stdout, " ").unwrap();
         stdout.flush().unwrap();
@@ -25,24 +29,25 @@ fn main() {
             None
         };
         match command {
-            "exit"  => exit(0),
-            "cd"    => chdir(args),
-            bin     => launch(bin, args),
+            "exit"      => exit(0),
+            "cd"        => chdir(args),
+            "getenv"    => getenv(args),
+            bin         => launch(bin, args),
         }
     }
 }
 
-fn launch(command: &str, args: Option<Vec<&str>>) {
-    let mut proc = Command::new(command);
-    if let Some(args) = args {
-        proc.args(&args);
-    }
-    match proc.output() {
-        Ok(command)    => {
-            write!(io::stdout(), "{}", String::from_utf8(command.stderr).unwrap()).unwrap();
-            write!(io::stderr(), "{}", String::from_utf8(command.stdout).unwrap()).unwrap();
+fn getenv(args: Option<Vec<&str>>) {
+    match args {
+        Some(keys) => {
+            for key in keys {
+                match env::var(key) {
+                    Ok(val) => println!("{}: {:?}", key, val),
+                    Err(err) => eprintln!("could not interpret {}: {}", key, err),
+                }
+            }
         },
-        Err(err) => eprintln!("{}", err),
+        None => eprintln!("Usage: getenv <env_key(s)>"),
     }
 }
 
@@ -65,3 +70,18 @@ fn chdir(args: Option<Vec<&str>>) {
         }
     }
 }
+
+fn launch(command: &str, args: Option<Vec<&str>>) {
+    let mut proc = Command::new(command);
+    if let Some(args) = args {
+        proc.args(&args);
+    }
+    match proc.output() {
+        Ok(command)    => {
+            write!(io::stdout(), "{}", String::from_utf8(command.stderr).unwrap()).unwrap();
+            write!(io::stderr(), "{}", String::from_utf8(command.stdout).unwrap()).unwrap();
+        },
+        Err(err) => eprintln!("{}", err),
+    }
+}
+
