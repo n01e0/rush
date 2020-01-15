@@ -1,2 +1,0 @@
-INFO  2020-01-15T02:05:56.033 29809 on_process_exit:393: exited: pid=11770 status=0 stoptime=0
-INFO  2020-01-15T09:19:06.020 29809 mch_exit:99: Nvim exit: 0
