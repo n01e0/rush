@@ -1,23 +1,19 @@
 extern crate dirs;
 extern crate colored;
 
+use colored::*;
 use std::env;
 use std::path::Path;
-use colored::*;
 use std::io::{self, Write};
 use std::process::{ Command, exit };
 
 fn main() {
     let mut stdout = io::stdout();
-    let mut status = String::new();
     let mut prompt = String::new();
     prompt.push_str("💩"); 
     loop {
-        if let Ok(pwd) = env::var("PWD") {
-            status.push_str(&pwd);
-        } else {
-            status.push_str("");
-        }
+        let mut status = String::new();
+        status.push_str(env::current_dir().unwrap().to_str().unwrap());
         println!("{}", status.yellow().on_magenta());
         write!(stdout, "{} ", prompt).unwrap();
         stdout.flush().unwrap();
@@ -38,7 +34,6 @@ fn main() {
             "setenv"    => setenv(args),
             bin         => launch(bin, args),
         }
-        status = String::new();
     }
 }
 
@@ -103,9 +98,9 @@ fn launch(command: &str, args: Option<Vec<&str>>) {
     }
     match proc.output() {
         Ok(command)    => {
-            write!(io::stdout(), "{}", String::from_utf8(command.stderr).unwrap()).unwrap();
-            write!(io::stderr(), "{}", String::from_utf8(command.stdout).unwrap()).unwrap();
+            write!(io::stdout(), "{}", String::from_utf8(command.stdout).unwrap()).unwrap();
+            write!(io::stderr(), "{}", String::from_utf8(command.stderr).unwrap()).unwrap();
         },
-        Err(err) => eprintln!("{}", format!("{}", err).red()),
+        Err(err) => eprintln!("{}", format!("Command not found!: {}", err).red()),
     }
 }
