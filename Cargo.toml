@@ -1,6 +1,6 @@
 [package]
 name = "rush"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["n01e0 <noleo@vanillabeans.mobi>"]
 edition = "2018"
 
@@ -10,3 +10,4 @@ edition = "2018"
 colored = "1.9"
 clap = "2.33"
 dirs = "2.0.2"
+signal-simple = "*"
