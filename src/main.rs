@@ -1,106 +1,48 @@
-extern crate dirs;
-extern crate colored;
+mod rush;
 
-use colored::*;
-use std::env;
-use std::path::Path;
-use std::io::{self, Write};
-use std::process::{ Command, exit };
+extern crate signal_simple;
+
+use std::io::{self, Read};
 
 fn main() {
-    let mut stdout = io::stdout();
-    let mut prompt = String::new();
-    prompt.push_str("💩"); 
+    sig_init();
     loop {
-        let mut status = String::new();
-        status.push_str(env::current_dir().unwrap().to_str().unwrap());
-        println!("{}", status.yellow().on_magenta());
-        write!(stdout, "{} ", prompt).unwrap();
-        stdout.flush().unwrap();
-        let mut line = String::new();
-        io::stdin().read_line(&mut line).expect("read error");
-        line.retain(|r| r != '\n');
-        let line: Vec<&str> = line.split(' ').collect();
-        let command = line[0];
-        let args: Option<Vec<&str>> = if line.len() > 1 {
-            Some(line[1..].to_vec())
-        } else {
-            None
-        };
-        match command {
-            "exit"      => exit(0),
-            "cd"        => chdir(args),
-            "getenv"    => getenv(args),
-            "setenv"    => setenv(args),
-            bin         => launch(bin, args),
+        let mut shell = rush::Status::new();
+        shell.prompt("💩").flush();
+        let mut line = readln();
+        shell.exec(tokenize(&mut line)).finish();
+    }
+}
+
+fn readln() -> String {
+    let mut stdin = io::stdin();
+    let mut line: Vec<u8> = Vec::new();
+    let mut buf = [0; 1];
+    loop {
+        stdin.read(&mut buf).unwrap_or(0);
+        match buf[0] {
+            0 => break,
+            0xa => {
+                line.append(&mut buf.to_vec());
+                break;
+            },
+            _ => line.append(&mut buf.to_vec()),
         }
     }
+
+    String::from_utf8(line).unwrap_or("exit".to_string())
 }
 
-fn setenv(args: Option<Vec<&str>>) {
-    match args {
-        Some(command) => {
-            match command.len() {
-                1 => {
-                    let command: Vec<&str> = command[0].split('=').collect();
-                    if command.len() == 2 {
-                        env::set_var(command[0], command[1]);
-                    } else {
-                        eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red());
-                    }
-                },
-                2 => env::set_var(command[0], command[1]),
-                _ => eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red()),
-            }
-        },
-        None => eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red()), 
+fn tokenize<'a>(line: &'a mut String) -> Vec<&'a str> {
+    if line.len() == 0 {
+        return vec!("exit");
     }
+    line.retain(|r| r != '\n');
+    line.split(' ').collect::<Vec<&str>>()
 }
 
-fn getenv(args: Option<Vec<&str>>) {
-    match args {
-        Some(keys) => {
-            for key in keys {
-                match env::var(key) {
-                    Ok(val) => println!("{}: {:?}", key, val),
-                    Err(err) => eprintln!("{}", format!("could not interpret {}: {}", key, err).red()),
-                }
-            }
-        },
-        None => eprintln!("{}", "Usage: getenv <env_key(s)>".red()),
-    }
-}
-
-fn chdir(args: Option<Vec<&str>>) {
-    match args {
-        Some(path) => {
-            let path = Path::new(path[0]);
-            if let Err(err) = env::set_current_dir(path) {
-                eprintln!("{}", format!("{}", err).red());
-                eprintln!("{}", "Usage: cd <dir>".red());
-            }
-        },
-        None => {
-            match dirs::home_dir() {
-                Some(home) => if let Err(err) = env::set_current_dir(home.as_path()) {
-                    eprintln!("{}", format!("{}", err).red());
-                },
-                None => eprintln!("{}", "Usage: cd <dir>".red()),
-            }
-        }
-    }
-}
-
-fn launch(command: &str, args: Option<Vec<&str>>) {
-    let mut proc = Command::new(command);
-    if let Some(args) = args {
-        proc.args(&args);
-    }
-    match proc.output() {
-        Ok(command)    => {
-            write!(io::stdout(), "{}", String::from_utf8(command.stdout).unwrap()).unwrap();
-            write!(io::stderr(), "{}", String::from_utf8(command.stderr).unwrap()).unwrap();
-        },
-        Err(err) => eprintln!("{}", format!("Command not found!: {}", err).red()),
-    }
+fn sig_init() {
+    use signal_simple::signal::*;
+    ignore(SIGINT);
+    ignore(SIGTERM);
 }
