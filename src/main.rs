@@ -3,14 +3,15 @@ mod rush;
 extern crate signal_simple;
 
 use std::io::{self, Read};
+use std::env;
 
 fn main() {
     sig_init();
     loop {
-        let mut shell = rush::Status::new();
-        shell.prompt("💩").flush();
+        let mut shell = rush::Shell::new();
+        shell.prompt("💩 ").flush();
         let mut line = readln();
-        shell.exec(tokenize(&mut line)).finish();
+        shell.exec(tokenize(&mut line).iter().map(|x| x.as_str()).collect::<Vec<&str>>()).finish();
     }
 }
 
@@ -33,12 +34,24 @@ fn readln() -> String {
     String::from_utf8(line).unwrap_or("exit".to_string())
 }
 
-fn tokenize<'a>(line: &'a mut String) -> Vec<&'a str> {
+fn tokenize(line: &mut String) -> Vec<String> {
+    let mut tokens: Vec<String> = Vec::new();
     if line.len() == 0 {
-        return vec!("exit");
+        return vec!("exit".to_string());
     }
     line.retain(|r| r != '\n');
-    line.split(' ').collect::<Vec<&str>>()
+    for tok in line.split_whitespace().map(|x| x.to_string()).collect::<Vec<String>>().iter_mut() {
+        if tok.starts_with("$") {
+            tok.remove(0);
+            match env::var(&tok) {
+                Ok(val) => tokens.push(val),
+                Err(_) => tokens.push("".to_string()),
+            };
+        } else {
+            tokens.push(tok.to_string());
+        }
+    }
+    tokens
 }
 
 fn sig_init() {

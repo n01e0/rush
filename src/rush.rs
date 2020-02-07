@@ -3,41 +3,45 @@ extern crate dirs;
 
 use colored::*;
 use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::io::{Write, stdout};
 use std::process::{ Command, exit };
 
-pub struct Status {
-    cwd: String,
+pub struct Shell {
+    cwd: PathBuf,
     code: i32,
     prompt: String
 }
 
-impl Status {
-    pub fn new() -> Status {
-        Status {
-            cwd: String::new(),
+impl Shell {
+    pub fn new() -> Shell {
+        Shell {
+            cwd: PathBuf::new(),
             code: 0,
             prompt: String::new(),
         }
     }
 
-    pub fn flush(&mut self) -> &mut Status {
-        self.cwd = env::current_dir().unwrap().to_str().unwrap().to_string();
-        println!("{}", self.cwd);
+    pub fn flush(&mut self) -> &mut Shell {
+        self.cwd = env::current_dir().unwrap();
+        println!("{}", self.cwd.to_str().unwrap());
         print!("{}", self.prompt);
         stdout().flush().unwrap();
         self
     }
 
-    pub fn prompt(&mut self, content: &str) -> &mut Status {
+    pub fn prompt(&mut self, content: &str) -> &mut Shell {
         self.prompt = content.to_string();
         self
     }
 
-    pub fn exec(&mut self, token: Vec<&str>) -> &mut Status {
+    pub fn exec(&mut self, token: Vec<&str>) -> &mut Shell {
         let eof = std::str::from_utf8(&[0]).unwrap();
-        let command = token[0];
+        let command = if token.len() > 0 {
+            token[0]
+        } else {
+            "clear"
+        };
         let args: Option<Vec<&str>> = if token.len() > 1 {
             Some(token[1..].to_vec())
         } else {
@@ -54,8 +58,8 @@ impl Status {
         self
     }
 
-    pub fn finish(&mut self) -> &mut Status {
-        self.cwd = dirs::home_dir().unwrap().to_str().unwrap().to_string();
+    pub fn finish(&mut self) -> &mut Shell {
+        self.cwd = dirs::home_dir().unwrap();
         self
     }
 
