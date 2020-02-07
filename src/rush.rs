@@ -24,7 +24,7 @@ impl Shell {
 
     pub fn flush(&mut self) -> &mut Shell {
         self.cwd = env::current_dir().unwrap();
-        println!("{}", self.cwd.to_str().unwrap());
+        println!("{}", self.cwd.display());
         print!("{}", self.prompt);
         stdout().flush().unwrap();
         self
@@ -47,13 +47,13 @@ impl Shell {
         } else {
             None
         };
-        match command  {
+        self.code = match command  {
             c if c == eof        => exit(0),
             "exit"               => exit(0),
-            "cd"                 => self.chdir(args),
-            "getenv"             => self.getenv(args),
-            "setenv"             => self.setenv(args),
-            bin                  => self.launch(bin, args),
+            "cd"                 => crate::rush::chdir(args),
+            "getenv"             => crate::rush::getenv(args),
+            "setenv"             => crate::rush::setenv(args),
+            bin                  => crate::rush::launch(bin, args),
         };
         self
     }
@@ -62,83 +62,91 @@ impl Shell {
         self.cwd = dirs::home_dir().unwrap();
         self
     }
+}
 
-    fn setenv(&mut self, args: Option<Vec<&str>>) {
-        match args {
-            Some(command) => {
-                match command.len() {
-                    1 => {
-                        let command: Vec<&str> = command[0].split('=').collect();
-                        if command.len() == 2 {
-                            env::set_var(command[0], command[1]);
-                        } else {
-                            eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red());
-                        }
-                    },
-                    2 => env::set_var(command[0], command[1]),
-                    _ => eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red()),
-                }
-            },
-            None => eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red()), 
-        }
-
-        self.code = 0;
-    }
-
-    fn getenv(&mut self, args: Option<Vec<&str>>) {
-        match args {
-            Some(keys) => {
-                for key in keys {
-                    match env::var(key) {
-                        Ok(val) => println!("{}: {:?}", key, val),
-                        Err(err) => eprintln!("{}", format!("could not interpret {}: {}", key, err).red()),
+fn setenv(args: Option<Vec<&str>>) -> i32 {
+    match args {
+        Some(command) => {
+            match command.len() {
+                1 => {
+                    let command: Vec<&str> = command[0].split('=').collect();
+                    if command.len() == 2 {
+                        env::set_var(command[0], command[1]);
+                    } else {
+                        eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red());
                     }
-                }
-            },
-            None => eprintln!("{}", "Usage: getenv <env_key(s)>".red()),
-        }
-        self.code = 0;
+                },
+                2 => env::set_var(command[0], command[1]),
+                _ => eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red()),
+            }
+        },
+        None => eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red()), 
     }
 
-    fn chdir(&mut self, args: Option<Vec<&str>>) {
-        match args {
-            Some(path) => {
-                let path = Path::new(path[0]);
-                if let Err(err) = env::set_current_dir(path) {
-                    eprintln!("{}", format!("{}", err).red());
-                    eprintln!("{}", "Usage: cd <dir>".red());
-                    self.code = 1;
-                }
-                self.code = 0;
-            },
-            None => {
-                match dirs::home_dir() {
-                    Some(home) => if let Err(err) = env::set_current_dir(home.as_path()) {
-                        eprintln!("{}", format!("{}", err).red());
-                        self.code = 1;
+    return 0;
+}
+
+fn getenv(args: Option<Vec<&str>>) -> i32 {
+    match args {
+        Some(keys) => {
+            for key in keys {
+                match env::var(key) {
+                    Ok(val) => {
+                        println!("{}: {:?}", key, val);
+                        return 0;
                     },
-                    None => eprintln!("{}", "Usage: cd <dir>".red()),
+                    Err(err) => {
+                        eprintln!("{}", format!("could not interpret {}: {}", key, err).red());
+                        return 1;
+                    },
                 }
-                self.code = 0;
             }
+        },
+        None => {
+            eprintln!("{}", "Usage: getenv <env_key(s)>".red());
+            return 1;
+        },
+    }
+    return 0;
+}
+
+fn chdir(args: Option<Vec<&str>>) -> i32 {
+    match args {
+        Some(path) => {
+            let path = Path::new(path[0]);
+            if let Err(err) = env::set_current_dir(path) {
+                eprintln!("{}", format!("{}", err).red());
+                eprintln!("{}", "Usage: cd <dir>".red());
+                return 1;
+            }
+            return 0;
+        },
+        None => {
+            match dirs::home_dir() {
+                Some(home) => if let Err(err) = env::set_current_dir(home.as_path()) {
+                    eprintln!("{}", format!("{}", err).red());
+                    return 1;
+                },
+                None => eprintln!("{}", "Usage: cd <dir>".red()),
+            }
+            return 0;
         }
     }
+}
 
-    fn launch(&mut self, command: &str, args: Option<Vec<&str>>) {
-        let mut proc = Command::new(command);
-        if let Some(args) = args {
-            proc.args(&args);
-        }
-        self.code = match proc.status() {
-            Ok(command) => {
-                command.code().unwrap()
-            },
-            Err(err) => {
-                eprintln!("{}", format!("Command not found: {}", err).red());
-                1
-            }
-        };
+fn launch(command: &str, args: Option<Vec<&str>>) -> i32 {
+    let mut proc = Command::new(command);
+    if let Some(args) = args {
+        proc.args(&args);
     }
-
+    match proc.status() {
+        Ok(command) => {
+            command.code().unwrap()
+        },
+        Err(err) => {
+            eprintln!("{}", format!("Command not found: {}", err).red());
+            1
+        }
+    }
 }
 
