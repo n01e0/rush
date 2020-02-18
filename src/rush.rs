@@ -24,7 +24,7 @@ impl Shell {
 
     pub fn flush(&mut self) -> &mut Shell {
         self.cwd = env::current_dir().unwrap();
-        println!("{}", self.cwd.display());
+        println!("{}", self.cwd.to_str().unwrap());
         print!("{}", self.prompt);
         stdout().flush().unwrap();
         self
@@ -134,6 +134,28 @@ fn chdir(args: Option<Vec<&str>>) -> i32 {
     }
 }
 
+fn alias(args: Option<Vec<&str>>) -> i32 {
+    match args {
+        Some(command) => {
+            match command.len() {
+                1 => {
+                    let command: Vec<&str> = command[0].split('=').collect();
+                    if command.len() == 2 {
+                        env::set_var(command[0], command[1]);
+                    } else {
+                        eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red());
+                    }
+                },
+                2 => env::set_var(command[0], command[1]),
+                _ => eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red()),
+            }
+        },
+        None => eprintln!("{}", format!("Usage: setenv <KEY=VALUE|KEY VALUE>").red()), 
+    }
+
+    return 0;
+}
+
 fn launch(command: &str, args: Option<Vec<&str>>) -> i32 {
     let mut proc = Command::new(command);
     if let Some(args) = args {
@@ -149,4 +171,3 @@ fn launch(command: &str, args: Option<Vec<&str>>) -> i32 {
         }
     }
 }
-
