@@ -9,6 +9,7 @@ use std::process::{ Command, exit };
 
 pub struct Shell {
     cwd: PathBuf,
+    branch: String,
     code: i32,
     prompt: String
 }
@@ -17,6 +18,7 @@ impl Shell {
     pub fn new() -> Shell {
         Shell {
             cwd: PathBuf::new(),
+            branch: String::new(),
             code: 0,
             prompt: String::new(),
         }
@@ -24,7 +26,19 @@ impl Shell {
 
     pub fn flush(&mut self) -> &mut Shell {
         self.cwd = env::current_dir().unwrap();
-        println!("{}", self.cwd.to_str().unwrap());
+        self.branch = if let Ok(output) = 
+            Command::new("git").args(&["symbolic-ref", "--short", "HEAD"]).output() {
+                let mut currnt_branch = output.stdout;
+                currnt_branch.retain(|c| *c != 0xa);
+                format!("[{}]", 
+                        String::from_utf8(currnt_branch)
+                        .unwrap_or("".to_string()))
+            } else {
+                "".to_string()
+            };
+        let cwd = format!("{}", self.cwd.to_str().unwrap()).red().on_cyan();
+        let branch = format!("{}", self.branch).on_red();
+        println!("{}{}", cwd, branch);
         print!("{}", self.prompt);
         stdout().flush().unwrap();
         self
