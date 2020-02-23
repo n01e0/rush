@@ -7,11 +7,11 @@ use std::env;
 
 fn main() {
     sig_init();
+    let mut shell = rush::Shell::new();
     loop {
-        let mut shell = rush::Shell::new();
-        shell.prompt("💩 ").flush();
+        shell.prompt("💩").flush();
         let mut line = readln();
-        shell.exec(tokenize(&mut line).iter().map(|x| x.as_str()).collect::<Vec<&str>>()).finish();
+        shell.exec(tokenize(&mut line)).finish();
     }
 }
 
